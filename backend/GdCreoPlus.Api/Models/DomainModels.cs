@@ -40,6 +40,7 @@ public class Zona
     public TipoZona Tipo { get; set; }
     public int AforoMaximo { get; set; }
     public bool Activa { get; set; } = true;
+    public bool EnSeguimiento { get; set; } = true;
 }
 
 public class NodoESP32

@@ -36,10 +36,11 @@ public class DashboardController : ControllerBase
     {
         if (!IsPisoAllowed(pisoId, assignedPisos)) return false;
         
-        if (zonaId.HasValue && assignedPisos != null)
+        if (zonaId.HasValue)
         {
             var zona = await _context.Zonas.FindAsync(zonaId.Value);
-            if (zona == null || !assignedPisos.Contains(zona.PisoId)) return false;
+            if (zona == null || !zona.EnSeguimiento) return false;
+            if (assignedPisos != null && !assignedPisos.Contains(zona.PisoId)) return false;
         }
         
         return true;
@@ -51,7 +52,7 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!await ValidatePisoAndZonaAsync(pisoId, zonaId, assignedPisos)) return Forbid();
 
-        var qEnCircuito = _context.SesionesCircuito.Include(s => s.ZonaActual).Where(s => s.Estado == EstadoSesion.EnCircuito);
+        var qEnCircuito = _context.SesionesCircuito.Include(s => s.ZonaActual).Where(s => s.Estado == EstadoSesion.EnCircuito && s.ZonaActual != null && s.ZonaActual.EnSeguimiento);
         var qAtendidos = _context.SesionesCircuito.Include(s => s.ZonaActual).Where(s => s.Estado == EstadoSesion.Atendido);
 
         if (zonaId.HasValue) 
@@ -100,7 +101,7 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!IsPisoAllowed(pisoId, assignedPisos)) return Forbid();
 
-        var query = _context.Zonas.Where(z => z.Activa).AsQueryable();
+        var query = _context.Zonas.Where(z => z.Activa && z.EnSeguimiento).AsQueryable();
         if (pisoId.HasValue) query = query.Where(z => z.PisoId == pisoId.Value);
         else if (assignedPisos != null) query = query.Where(z => assignedPisos.Contains(z.PisoId));
 
@@ -133,6 +134,7 @@ public class DashboardController : ControllerBase
 
         var query = _context.SesionesCircuito
             .Include(s => s.ZonaActual)
+            .Where(s => s.ZonaActual != null && s.ZonaActual.EnSeguimiento)
             .OrderByDescending(s => s.HoraIngreso)
             .AsQueryable();
 

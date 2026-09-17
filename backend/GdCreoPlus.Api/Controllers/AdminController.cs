@@ -159,7 +159,7 @@ public class AdminController : ControllerBase
         var pisoExiste = await _context.Pisos.AnyAsync(p => p.Id == req.PisoId);
         if (!pisoExiste) return NotFound(new { message = "Piso no encontrado." });
 
-        var zona = new Zona { PisoId = req.PisoId, Nombre = req.Nombre, Tipo = req.Tipo, AforoMaximo = req.AforoMaximo, Activa = true };
+        var zona = new Zona { PisoId = req.PisoId, Nombre = req.Nombre, Tipo = req.Tipo, AforoMaximo = req.AforoMaximo, Activa = true, EnSeguimiento = true };
         _context.Zonas.Add(zona);
         await _context.SaveChangesAsync();
         return Ok(zona);
