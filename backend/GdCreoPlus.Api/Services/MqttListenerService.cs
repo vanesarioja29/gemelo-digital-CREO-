@@ -86,6 +86,7 @@ public class MqttListenerService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var sesionService = scope.ServiceProvider.GetRequiredService<SesionCircuitoService>();
 
         var tarjeta = db.Tarjetas.FirstOrDefault(t => t.CodigoUUID == evt.tarjetaUUID);
         if (tarjeta == null)
@@ -97,37 +98,13 @@ public class MqttListenerService : BackgroundService
 
         if (topic == "creo/piso1/salida")
         {
-            var sesion = db.SesionesCircuito.FirstOrDefault(s => s.TarjetaId == tarjeta.Id && s.Estado == EstadoSesion.EnCircuito);
-            if (sesion != null)
+            try
             {
-                sesion.Estado = EstadoSesion.Atendido;
-                sesion.HoraSalida = evt.timestamp;
-                sesion.ZonaActualId = null;
-
-                // Calcular tiempos
-                var minEspera = db.EventosDeteccion
-                    .Where(e => e.TarjetaId == tarjeta.Id && e.TimestampUtc >= sesion.HoraIngreso && e.Zona.Tipo == TipoZona.SalaDeEspera)
-                    .Min(e => (DateTime?)e.TimestampUtc);
-                
-                var minConsulta = db.EventosDeteccion
-                    .Where(e => e.TarjetaId == tarjeta.Id && e.TimestampUtc >= sesion.HoraIngreso && e.Zona.Tipo == TipoZona.Consultorio)
-                    .Min(e => (DateTime?)e.TimestampUtc);
-
-                if (minEspera.HasValue && minConsulta.HasValue)
-                {
-                    sesion.TiempoEsperaSegundos = (int)(minConsulta.Value - minEspera.Value).TotalSeconds;
-                }
-                else if (minEspera.HasValue)
-                {
-                    sesion.TiempoEsperaSegundos = (int)(evt.timestamp - minEspera.Value).TotalSeconds;
-                }
-
-                if (minConsulta.HasValue)
-                {
-                    sesion.DuracionConsultaSegundos = (int)(evt.timestamp - minConsulta.Value).TotalSeconds;
-                }
-
-                await db.SaveChangesAsync();
+                await sesionService.CerrarSesion(evt.tarjetaUUID);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing session for UUID {evt.tarjetaUUID}: {ex.Message}");
             }
             return;
         }
@@ -152,16 +129,17 @@ public class MqttListenerService : BackgroundService
         var currentSesion = db.SesionesCircuito.FirstOrDefault(s => s.TarjetaId == tarjeta.Id && s.Estado == EstadoSesion.EnCircuito);
         if (currentSesion == null)
         {
-            // Start new session
-            currentSesion = new SesionCircuito
+            // The simulator sometimes randomly detects a card without "Admision" event from our backend 
+            // In a real scenario, we might ignore this, but since we're auto-creating in the simulator:
+            try
             {
-                TarjetaId = tarjeta.Id,
-                CodigoPacienteAnonimo = $"Paciente #{new Random().Next(100,999)}",
-                ZonaActualId = nodo.ZonaId,
-                Estado = EstadoSesion.EnCircuito,
-                HoraIngreso = evt.timestamp
-            };
-            db.SesionesCircuito.Add(currentSesion);
+                currentSesion = await sesionService.AbrirSesion(evt.tarjetaUUID);
+                if (currentSesion.ZonaActualId != nodo.ZonaId)
+                {
+                    currentSesion.ZonaActualId = nodo.ZonaId;
+                }
+            }
+            catch { }
         }
         else
         {
