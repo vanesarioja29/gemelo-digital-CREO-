@@ -39,6 +39,7 @@ public class Zona
     public string Nombre { get; set; } = string.Empty;
     public TipoZona Tipo { get; set; }
     public int AforoMaximo { get; set; }
+    public bool Activa { get; set; } = true;
 }
 
 public class NodoESP32

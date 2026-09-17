@@ -20,7 +20,7 @@ public class ZonasController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] int? pisoId)
     {
-        var query = _context.Zonas.AsQueryable();
+        var query = _context.Zonas.Where(z => z.Activa).AsQueryable();
         if (pisoId.HasValue)
         {
             query = query.Where(z => z.PisoId == pisoId.Value);

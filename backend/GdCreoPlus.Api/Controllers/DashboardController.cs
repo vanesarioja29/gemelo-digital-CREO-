@@ -100,7 +100,7 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!IsPisoAllowed(pisoId, assignedPisos)) return Forbid();
 
-        var query = _context.Zonas.AsQueryable();
+        var query = _context.Zonas.Where(z => z.Activa).AsQueryable();
         if (pisoId.HasValue) query = query.Where(z => z.PisoId == pisoId.Value);
         else if (assignedPisos != null) query = query.Where(z => assignedPisos.Contains(z.PisoId));
 

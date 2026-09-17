@@ -125,9 +125,9 @@ public class AdminController : ControllerBase
         var piso = await _context.Pisos.FindAsync(id);
         if (piso == null) return NotFound(new { message = "Piso no encontrado." });
 
-        var tieneZonas = await _context.Zonas.AnyAsync(z => z.PisoId == id); // as Zonas don't have Activa flag, we assume if they exist they are active
-        if (tieneZonas)
-            return BadRequest(new { message = "No se puede desactivar un piso con zonas registradas." });
+        var tieneZonasActivas = await _context.Zonas.AnyAsync(z => z.PisoId == id && z.Activa);
+        if (tieneZonasActivas)
+            return BadRequest(new { message = "No se puede desactivar un piso con zonas activas." });
 
         piso.Activo = false;
         await _context.SaveChangesAsync();
@@ -138,14 +138,15 @@ public class AdminController : ControllerBase
     // ================== ZONAS ==================
 
     [HttpGet("zonas")]
-    public async Task<IActionResult> GetZonas([FromQuery] int? pisoId)
+    public async Task<IActionResult> GetZonas([FromQuery] int? pisoId, [FromQuery] bool incluirInactivas = false)
     {
         var query = _context.Zonas.AsQueryable();
+        if (!incluirInactivas) query = query.Where(z => z.Activa);
         if (pisoId.HasValue) query = query.Where(z => z.PisoId == pisoId.Value);
         return Ok(await query.ToListAsync());
     }
 
-    public class ZonaRequest { public int PisoId { get; set; } public string Nombre { get; set; } = string.Empty; public TipoZona Tipo { get; set; } public int AforoMaximo { get; set; } }
+    public class ZonaRequest { public int PisoId { get; set; } public string Nombre { get; set; } = string.Empty; public TipoZona Tipo { get; set; } public int AforoMaximo { get; set; } public bool? Activa { get; set; } }
 
     [HttpPost("zonas")]
     public async Task<IActionResult> CreateZona([FromBody] ZonaRequest req)
@@ -158,7 +159,7 @@ public class AdminController : ControllerBase
         var pisoExiste = await _context.Pisos.AnyAsync(p => p.Id == req.PisoId);
         if (!pisoExiste) return NotFound(new { message = "Piso no encontrado." });
 
-        var zona = new Zona { PisoId = req.PisoId, Nombre = req.Nombre, Tipo = req.Tipo, AforoMaximo = req.AforoMaximo };
+        var zona = new Zona { PisoId = req.PisoId, Nombre = req.Nombre, Tipo = req.Tipo, AforoMaximo = req.AforoMaximo, Activa = true };
         _context.Zonas.Add(zona);
         await _context.SaveChangesAsync();
         return Ok(zona);
@@ -178,6 +179,7 @@ public class AdminController : ControllerBase
         zona.Nombre = req.Nombre;
         zona.Tipo = req.Tipo;
         zona.AforoMaximo = req.AforoMaximo;
+        if (req.Activa.HasValue) zona.Activa = req.Activa.Value;
 
         await _context.SaveChangesAsync();
         return Ok(zona);
@@ -193,9 +195,20 @@ public class AdminController : ControllerBase
         if (pacientesEnCircuito)
             return BadRequest(new { message = "No se puede eliminar una zona con pacientes en circuito." });
 
-        _context.Zonas.Remove(zona);
-        await _context.SaveChangesAsync();
-        return Ok(new { message = "Zona eliminada correctamente." });
+        var tieneHistorialEventos = await _context.EventosDeteccion.AnyAsync(e => e.ZonaId == id);
+        
+        if (tieneHistorialEventos)
+        {
+            zona.Activa = false;
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Zona desactivada correctamente porque posee historial de eventos." });
+        }
+        else
+        {
+            _context.Zonas.Remove(zona);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Zona eliminada permanentemente (sin historial de eventos)." });
+        }
     }
 
 
