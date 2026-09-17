@@ -29,9 +29,9 @@ public class AppDbContext : DbContext
         );
 
         modelBuilder.Entity<Zona>().HasData(
-            new Zona { Id = 1, PisoId = 1, Nombre = "Admisión", Tipo = TipoZona.Admision, AforoMaximo = 10 },
-            new Zona { Id = 2, PisoId = 1, Nombre = "Sala de Espera General", Tipo = TipoZona.SalaDeEspera, AforoMaximo = 20 },
-            new Zona { Id = 3, PisoId = 1, Nombre = "Consultorio Piloto", Tipo = TipoZona.Consultorio, AforoMaximo = 3 }
+            new Zona { Id = 1, PisoId = 1, Nombre = "Admisión", Tipo = TipoZona.Admision, AforoMaximo = 6 },
+            new Zona { Id = 2, PisoId = 1, Nombre = "Sala de Espera General", Tipo = TipoZona.SalaDeEspera, AforoMaximo = 18 },
+            new Zona { Id = 3, PisoId = 1, Nombre = "Consultorio Piloto", Tipo = TipoZona.Consultorio, AforoMaximo = 2 }
         );
 
         modelBuilder.Entity<NodoESP32>().HasData(
