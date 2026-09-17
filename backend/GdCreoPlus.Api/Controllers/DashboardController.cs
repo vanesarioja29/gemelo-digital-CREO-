@@ -19,15 +19,28 @@ public class DashboardController : ControllerBase
     [HttpGet("kpis")]
     public async Task<IActionResult> GetKpis([FromQuery] int? pisoId, [FromQuery] int? zonaId)
     {
-        // For now, mock calculation
         var aforoActual = await _context.SesionesCircuito.CountAsync(s => s.Estado == EstadoSesion.EnCircuito && (!zonaId.HasValue || s.ZonaActualId == zonaId));
         var atendidos = await _context.SesionesCircuito.CountAsync(s => s.Estado == EstadoSesion.Atendido);
         
+        var hoy = DateTime.UtcNow.Date;
+        var sesionesHoy = await _context.SesionesCircuito
+            .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy)
+            .ToListAsync();
+
+        double tiempoEsperaPromedioMins = 0;
+        double duracionConsultaPromedioMins = 0;
+
+        if (sesionesHoy.Any())
+        {
+            tiempoEsperaPromedioMins = sesionesHoy.Average(s => s.TiempoEsperaSegundos) / 60.0;
+            duracionConsultaPromedioMins = sesionesHoy.Average(s => s.DuracionConsultaSegundos) / 60.0;
+        }
+
         return Ok(new {
             AforoActual = aforoActual,
-            TiempoEsperaPromedio = 15, // Mock mins
-            DuracionConsultaPromedio = 20, // Mock mins
-            PacientesAtendidos = atendidos // Siempre global
+            TiempoEsperaPromedio = Math.Round(tiempoEsperaPromedioMins, 1),
+            DuracionConsultaPromedio = Math.Round(duracionConsultaPromedioMins, 1),
+            PacientesAtendidos = atendidos
         });
     }
 

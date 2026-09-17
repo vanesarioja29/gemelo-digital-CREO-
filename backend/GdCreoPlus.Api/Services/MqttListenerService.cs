@@ -53,6 +53,7 @@ public class MqttListenerService : BackgroundService
         {
             Console.WriteLine("Connected to MQTT broker.");
             await _mqttClient.SubscribeAsync("creo/piso1/+/telemetria");
+            await _mqttClient.SubscribeAsync("creo/piso1/salida");
         };
 
         _mqttClient.DisconnectedAsync += async e =>
@@ -83,18 +84,8 @@ public class MqttListenerService : BackgroundService
 
     private async Task ProcessEvent(string topic, MqttEventDto evt)
     {
-        // Simple hysteresis logic could be more complex, keeping track of previous readings.
-        // For scaffolding, we just record the event and update the session.
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        // extract zonaId from topic or DB based on node. Here we parse topic: creo/piso1/{codigo_zona}/telemetria
-        var parts = topic.Split('/');
-        if (parts.Length < 3) return;
-        var codigoZona = parts[2]; // Using node identifier as codigo_zona in this simple mock
-
-        var nodo = db.NodosESP32.FirstOrDefault(n => n.Identificador == codigoZona);
-        if (nodo == null) return;
 
         var tarjeta = db.Tarjetas.FirstOrDefault(t => t.CodigoUUID == evt.tarjetaUUID);
         if (tarjeta == null)
@@ -103,6 +94,51 @@ public class MqttListenerService : BackgroundService
             db.Tarjetas.Add(tarjeta);
             await db.SaveChangesAsync();
         }
+
+        if (topic == "creo/piso1/salida")
+        {
+            var sesion = db.SesionesCircuito.FirstOrDefault(s => s.TarjetaId == tarjeta.Id && s.Estado == EstadoSesion.EnCircuito);
+            if (sesion != null)
+            {
+                sesion.Estado = EstadoSesion.Atendido;
+                sesion.HoraSalida = evt.timestamp;
+                sesion.ZonaActualId = null;
+
+                // Calcular tiempos
+                var minEspera = db.EventosDeteccion
+                    .Where(e => e.TarjetaId == tarjeta.Id && e.TimestampUtc >= sesion.HoraIngreso && e.Zona.Tipo == TipoZona.SalaDeEspera)
+                    .Min(e => (DateTime?)e.TimestampUtc);
+                
+                var minConsulta = db.EventosDeteccion
+                    .Where(e => e.TarjetaId == tarjeta.Id && e.TimestampUtc >= sesion.HoraIngreso && e.Zona.Tipo == TipoZona.Consultorio)
+                    .Min(e => (DateTime?)e.TimestampUtc);
+
+                if (minEspera.HasValue && minConsulta.HasValue)
+                {
+                    sesion.TiempoEsperaSegundos = (int)(minConsulta.Value - minEspera.Value).TotalSeconds;
+                }
+                else if (minEspera.HasValue)
+                {
+                    sesion.TiempoEsperaSegundos = (int)(evt.timestamp - minEspera.Value).TotalSeconds;
+                }
+
+                if (minConsulta.HasValue)
+                {
+                    sesion.DuracionConsultaSegundos = (int)(evt.timestamp - minConsulta.Value).TotalSeconds;
+                }
+
+                await db.SaveChangesAsync();
+            }
+            return;
+        }
+
+        // extract zonaId from topic or DB based on node. Here we parse topic: creo/piso1/{codigo_zona}/telemetria
+        var parts = topic.Split('/');
+        if (parts.Length < 3) return;
+        var codigoZona = parts[2]; // Using node identifier as codigo_zona in this simple mock
+
+        var nodo = db.NodosESP32.FirstOrDefault(n => n.Identificador == codigoZona);
+        if (nodo == null) return;
 
         var dbEvent = new EventoDeteccion
         {
@@ -113,11 +149,11 @@ public class MqttListenerService : BackgroundService
         };
         db.EventosDeteccion.Add(dbEvent);
 
-        var sesion = db.SesionesCircuito.FirstOrDefault(s => s.TarjetaId == tarjeta.Id && s.Estado == EstadoSesion.EnCircuito);
-        if (sesion == null)
+        var currentSesion = db.SesionesCircuito.FirstOrDefault(s => s.TarjetaId == tarjeta.Id && s.Estado == EstadoSesion.EnCircuito);
+        if (currentSesion == null)
         {
             // Start new session
-            sesion = new SesionCircuito
+            currentSesion = new SesionCircuito
             {
                 TarjetaId = tarjeta.Id,
                 CodigoPacienteAnonimo = $"Paciente #{new Random().Next(100,999)}",
@@ -125,14 +161,14 @@ public class MqttListenerService : BackgroundService
                 Estado = EstadoSesion.EnCircuito,
                 HoraIngreso = evt.timestamp
             };
-            db.SesionesCircuito.Add(sesion);
+            db.SesionesCircuito.Add(currentSesion);
         }
         else
         {
             // Simple hysteresis: just update if it's different. Real hysteresis would check multiple last events.
-            if (sesion.ZonaActualId != nodo.ZonaId)
+            if (currentSesion.ZonaActualId != nodo.ZonaId)
             {
-                sesion.ZonaActualId = nodo.ZonaId;
+                currentSesion.ZonaActualId = nodo.ZonaId;
             }
         }
 
