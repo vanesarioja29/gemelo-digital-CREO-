@@ -82,3 +82,33 @@ public class SesionCircuito
     public int TiempoEsperaSegundos { get; set; }
     public int DuracionConsultaSegundos { get; set; }
 }
+
+public enum Rol
+{
+    Administrador,
+    Operador,
+    Gerencia
+}
+
+public class Usuario
+{
+    public int Id { get; set; }
+    public string NombreCompleto { get; set; } = string.Empty;
+    public string NombreUsuario { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public Rol Rol { get; set; }
+    public bool Activo { get; set; } = true;
+    public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+
+    public ICollection<UsuarioPisoAsignado> PisosAsignados { get; set; } = new List<UsuarioPisoAsignado>();
+}
+
+public class UsuarioPisoAsignado
+{
+    public int Id { get; set; }
+    public int UsuarioId { get; set; }
+    public Usuario Usuario { get; set; } = null!;
+    
+    public int PisoId { get; set; }
+    public Piso Piso { get; set; } = null!;
+}

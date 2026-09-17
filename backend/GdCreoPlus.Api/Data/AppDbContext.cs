@@ -14,10 +14,16 @@ public class AppDbContext : DbContext
     public DbSet<Tarjeta> Tarjetas { get; set; } = null!;
     public DbSet<EventoDeteccion> EventosDeteccion { get; set; } = null!;
     public DbSet<SesionCircuito> SesionesCircuito { get; set; } = null!;
+    public DbSet<Usuario> Usuarios { get; set; } = null!;
+    public DbSet<UsuarioPisoAsignado> UsuariosPisosAsignados { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Usuario>()
+            .HasIndex(u => u.NombreUsuario)
+            .IsUnique();
 
         // Seed data
         modelBuilder.Entity<Sede>().HasData(
@@ -38,6 +44,19 @@ public class AppDbContext : DbContext
             new NodoESP32 { Id = 1, ZonaId = 1, Identificador = "NODE_ADM_01", Activo = true },
             new NodoESP32 { Id = 2, ZonaId = 2, Identificador = "NODE_ESP_01", Activo = true },
             new NodoESP32 { Id = 3, ZonaId = 3, Identificador = "NODE_CON_01", Activo = true }
+        );
+
+        modelBuilder.Entity<Usuario>().HasData(
+            new Usuario 
+            { 
+                Id = 1, 
+                NombreCompleto = "Administrador del Sistema",
+                NombreUsuario = "admin", 
+                Rol = Rol.Administrador, 
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Creo2026*"),
+                Activo = true,
+                FechaCreacion = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            }
         );
     }
 }
