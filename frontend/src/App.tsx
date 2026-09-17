@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 const API_BASE = 'http://localhost:5000/api';
 
 function App() {
-  const [kpis, setKpis] = useState({ AforoActual: 0, TiempoEsperaPromedio: 0, DuracionConsultaPromedio: 0, PacientesAtendidos: 0 });
+  const [kpis, setKpis] = useState({ aforoActual: 0, tiempoEsperaPromedio: 0, duracionConsultaPromedio: 0, pacientesAtendidos: 0 });
   const [mapaCalor, setMapaCalor] = useState<any[]>([]);
   const [actividad, setActividad] = useState<any[]>([]);
   const [aforoHistorico, setAforoHistorico] = useState<any[]>([]);
@@ -29,17 +29,17 @@ function App() {
       } catch (error) {
         console.error("Error fetching data, using mock data for UI", error);
         // Fallback mock data in case backend isn't up
-        setKpis({ AforoActual: 15, TiempoEsperaPromedio: 22, DuracionConsultaPromedio: 18, PacientesAtendidos: 45 });
+        setKpis({ aforoActual: 15, tiempoEsperaPromedio: 22, duracionConsultaPromedio: 18, pacientesAtendidos: 45 });
         setMapaCalor([
-          { ZonaId: 1, Nombre: 'Admisión', Ocupacion: 2, AforoMaximo: 10, Porcentaje: 20, Color: 'verde' },
-          { ZonaId: 2, Nombre: 'Sala de Espera General', Ocupacion: 18, AforoMaximo: 20, Porcentaje: 90, Color: 'amarillo' },
-          { ZonaId: 3, Nombre: 'Consultorio Piloto', Ocupacion: 3, AforoMaximo: 3, Porcentaje: 100, Color: 'rojo' }
+          { zonaId: 1, nombre: 'Admisión', ocupacion: 2, aforoMaximo: 10, porcentaje: 20, color: 'verde' },
+          { zonaId: 2, nombre: 'Sala de Espera General', ocupacion: 18, aforoMaximo: 20, porcentaje: 90, color: 'amarillo' },
+          { zonaId: 3, nombre: 'Consultorio Piloto', ocupacion: 3, aforoMaximo: 3, porcentaje: 100, color: 'rojo' }
         ]);
         setActividad([
-          { Id: 1, CodigoPacienteAnonimo: 'Paciente #123', ZonaActual: 'Consultorio Piloto', Estado: 'EnCircuito' },
-          { Id: 2, CodigoPacienteAnonimo: 'Paciente #456', ZonaActual: 'Sala de Espera', Estado: 'EnCircuito' },
+          { id: 1, codigoPacienteAnonimo: 'Paciente #123', zonaActual: 'Consultorio Piloto', estado: 'EnCircuito' },
+          { id: 2, codigoPacienteAnonimo: 'Paciente #456', zonaActual: 'Sala de Espera', estado: 'EnCircuito' },
         ]);
-        setAforoHistorico([{ Hora: '8:00', Aforo: 5 }, { Hora: '9:00', Aforo: 12 }, { Hora: '10:00', Aforo: 25 }]);
+        setAforoHistorico([{ hora: '8:00', aforo: 5 }, { hora: '9:00', aforo: 12 }, { hora: '10:00', aforo: 25 }]);
       }
     };
     fetchData();
@@ -76,28 +76,28 @@ function App() {
             <Users className="text-creo-vino mr-4" size={32} />
             <div>
               <p className="text-creo-gris text-sm">Aforo Actual</p>
-              <p className="text-2xl font-bold text-gray-800">{kpis.AforoActual}</p>
+              <p className="text-2xl font-bold text-gray-800">{kpis.aforoActual}</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow border-l-4 border-creo-naranja flex items-center">
             <Clock className="text-creo-naranja mr-4" size={32} />
             <div>
               <p className="text-creo-gris text-sm">T. Espera Prom.</p>
-              <p className="text-2xl font-bold text-gray-800">{kpis.TiempoEsperaPromedio} min</p>
+              <p className="text-2xl font-bold text-gray-800">{kpis.tiempoEsperaPromedio} min</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow border-l-4 border-creo-verde flex items-center">
             <Activity className="text-creo-verde mr-4" size={32} />
             <div>
               <p className="text-creo-gris text-sm">T. Consulta Prom.</p>
-              <p className="text-2xl font-bold text-gray-800">{kpis.DuracionConsultaPromedio} min</p>
+              <p className="text-2xl font-bold text-gray-800">{kpis.duracionConsultaPromedio} min</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow border-l-4 border-blue-500 flex items-center">
             <CheckCircle className="text-blue-500 mr-4" size={32} />
             <div>
               <p className="text-creo-gris text-sm">Pacientes Atendidos</p>
-              <p className="text-2xl font-bold text-gray-800">{kpis.PacientesAtendidos}</p>
+              <p className="text-2xl font-bold text-gray-800">{kpis.pacientesAtendidos}</p>
             </div>
           </div>
         </div>
@@ -110,10 +110,10 @@ function App() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {mapaCalor.map(z => (
-                <div key={z.ZonaId} className={`p-4 rounded-lg shadow-sm border flex flex-col items-center justify-center text-center h-32 ${getColorClass(z.Color)}`}>
-                  <p className="font-semibold">{z.Nombre}</p>
-                  <p className="text-3xl font-bold">{z.Ocupacion} / {z.AforoMaximo}</p>
-                  <p className="text-sm opacity-80">{Math.round(z.Porcentaje)}% ocupado</p>
+                <div key={z.zonaId} className={`p-4 rounded-lg shadow-sm border flex flex-col items-center justify-center text-center h-32 ${getColorClass(z.color)}`}>
+                  <p className="font-semibold">{z.nombre}</p>
+                  <p className="text-3xl font-bold">{z.ocupacion} / {z.aforoMaximo}</p>
+                  <p className="text-sm opacity-80">{Math.round(z.porcentaje)}% ocupado</p>
                 </div>
               ))}
             </div>
@@ -124,10 +124,10 @@ function App() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={aforoHistorico}>
-                  <XAxis dataKey="Hora" />
+                  <XAxis dataKey="hora" />
                   <YAxis />
                   <Tooltip cursor={{fill: '#f3f4f6'}} />
-                  <Bar dataKey="Aforo" fill="#AA0831" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="aforo" fill="#AA0831" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -140,11 +140,11 @@ function App() {
             <h2 className="text-xl font-bold mb-4 text-creo-vino border-b pb-2">Actividad en Circuito</h2>
             <div className="space-y-4">
               {actividad.map(act => (
-                <div key={act.Id} className="border-l-2 border-creo-naranja pl-3">
-                  <p className="font-bold text-gray-800">{act.CodigoPacienteAnonimo}</p>
+                <div key={act.id} className="border-l-2 border-creo-naranja pl-3">
+                  <p className="font-bold text-gray-800">{act.codigoPacienteAnonimo}</p>
                   <p className="text-sm text-creo-gris flex justify-between">
-                    <span>{act.ZonaActual}</span>
-                    <span className="bg-gray-100 px-2 rounded text-xs">{act.Estado}</span>
+                    <span>{act.zonaActual}</span>
+                    <span className="bg-gray-100 px-2 rounded text-xs">{act.estado}</span>
                   </p>
                 </div>
               ))}
