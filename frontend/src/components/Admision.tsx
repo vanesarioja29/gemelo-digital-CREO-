@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import client from '../api/client';
 import { QrCode, AlertCircle, CheckCircle, Search } from 'lucide-react';
-
-const API_BASE = 'http://localhost:5000/api';
 
 export default function Admision() {
   const [codigoQR, setCodigoQR] = useState('');
@@ -21,7 +19,7 @@ export default function Admision() {
 
   const fetchTarjetas = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/admision/tarjetas-disponibles`);
+      const res = await client.get(`/admision/tarjetas-disponibles`);
       setTarjetas(res.data);
     } catch (error) {
       console.error("Error fetching tarjetas", error);
@@ -36,7 +34,7 @@ export default function Admision() {
     setMensaje(null);
 
     try {
-      const res = await axios.post(`${API_BASE}/admision/escanear`, { codigoQR });
+      const res = await client.post(`/admision/escanear`, { codigoQR });
       const data = res.data;
 
       if (data.accion === 'ingreso') {
