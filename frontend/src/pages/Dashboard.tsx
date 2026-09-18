@@ -56,8 +56,9 @@ function PisoDashboardPanel({
   let aforoColor = 'border-creo-verde';
   let aforoText = 'Normal';
   let aforoTextColor = 'text-creo-verde';
-  if (aforoPct >= 100) { aforoColor = 'border-creo-vino'; aforoText = 'Límite excedido'; aforoTextColor = 'text-creo-vino'; }
-  else if (aforoPct >= 70) { aforoColor = 'border-creo-naranja'; aforoText = 'Cerca del límite'; aforoTextColor = 'text-creo-naranja'; }
+  let aforoIconBg = 'bg-green-50';
+  if (aforoPct >= 100) { aforoColor = 'border-creo-vino'; aforoText = 'Límite excedido'; aforoTextColor = 'text-creo-vino'; aforoIconBg = 'bg-red-50'; }
+  else if (aforoPct >= 70) { aforoColor = 'border-creo-naranja'; aforoText = 'Cerca del límite'; aforoTextColor = 'text-creo-naranja'; aforoIconBg = 'bg-orange-50'; }
 
   const subtituloAlcance = zonaId ? `Zona filtrada · ${pisoName}` : `Todas las zonas · ${pisoName}`;
 
