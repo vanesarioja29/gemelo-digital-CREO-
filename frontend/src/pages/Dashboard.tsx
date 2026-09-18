@@ -7,7 +7,7 @@ import FiltroContexto from '../components/FiltroContexto';
 
 // Componente hijo para aislar la carga y renderizado por cada piso
 function PisoDashboardPanel({ pisoId, zonaId, pisoName }: { pisoId: number, zonaId: number | null, pisoName: string }) {
-  const [kpis, setKpis] = useState({ aforoActual: 0, tiempoEsperaPromedio: 0, duracionConsultaPromedio: 0, pacientesAtendidos: 0 });
+  const [kpis, setKpis] = useState<any>({ aforoActual: 0, tiempoEsperaPromedio: 0, duracionConsultaPromedio: 0, pacientesAtendidos: 0 });
   const [mapaCalor, setMapaCalor] = useState<any[]>([]);
   const [aforoHistorico, setAforoHistorico] = useState<any[]>([]);
 
@@ -43,6 +43,17 @@ function PisoDashboardPanel({ pisoId, zonaId, pisoName }: { pisoId: number, zona
     return 'bg-gray-200 border-gray-300';
   };
 
+  const totalAforoMaximo = mapaCalor.reduce((acc, z) => acc + z.aforoMaximo, 0);
+  const aforoPct = totalAforoMaximo > 0 ? (kpis.aforoActual / totalAforoMaximo) * 100 : 0;
+  
+  let aforoColor = 'border-creo-verde';
+  let aforoText = 'Normal';
+  let aforoTextColor = 'text-creo-verde';
+  if (aforoPct >= 100) { aforoColor = 'border-creo-vino'; aforoText = 'Límite excedido'; aforoTextColor = 'text-creo-vino'; }
+  else if (aforoPct >= 70) { aforoColor = 'border-creo-naranja'; aforoText = 'Cerca del límite'; aforoTextColor = 'text-creo-naranja'; }
+
+  const subtituloAlcance = zonaId ? `Zona filtrada · ${pisoName}` : `Todas las zonas · ${pisoName}`;
+
   return (
     <div className="space-y-6 mb-8 border-b pb-8 last:border-0">
       <div className="flex items-center gap-2 mb-4">
@@ -51,42 +62,89 @@ function PisoDashboardPanel({ pisoId, zonaId, pisoName }: { pisoId: number, zona
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-creo-vino flex items-center">
-          <Users className="text-creo-vino mr-4" size={32} />
+        {/* Aforo Actual */}
+        <div className={`bg-white p-5 rounded-xl shadow border-t-4 ${aforoColor} flex flex-col justify-between h-full`}>
           <div>
-            <p className="text-creo-gris text-xs font-semibold uppercase">Aforo Actual</p>
-            <p className="text-2xl font-bold text-gray-800">{kpis.aforoActual}</p>
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="text-gray-800 font-bold text-sm">Aforo Actual</p>
+                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
+              </div>
+              <div className="bg-red-50 p-2 rounded-lg">
+                <Users className="text-creo-vino" size={20} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.aforoActual}</p>
           </div>
+          <p className={`text-xs font-medium mt-4 ${aforoTextColor}`}>{aforoText}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-creo-naranja flex items-center">
-          <Clock className="text-creo-naranja mr-4" size={32} />
+
+        {/* Tiempo Espera */}
+        <div className="bg-white p-5 rounded-xl shadow border-t-4 border-creo-naranja flex flex-col justify-between h-full">
           <div>
-            <p className="text-creo-gris text-xs font-semibold uppercase">T. Espera Prom.</p>
-            <p className="text-2xl font-bold text-gray-800">{kpis.tiempoEsperaPromedio} min</p>
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="text-gray-800 font-bold text-sm">T. Espera Prom.</p>
+                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
+              </div>
+              <div className="bg-orange-50 p-2 rounded-lg">
+                <Clock className="text-creo-naranja" size={20} />
+              </div>
+            </div>
+            {kpis.tiempoEsperaPromedio === null ? (
+              <p className="text-sm italic text-gray-400 mt-4">No aplica a esta zona</p>
+            ) : (
+              <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.tiempoEsperaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
+            )}
           </div>
+          {kpis.tiempoEsperaPromedio !== null && <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>}
         </div>
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-creo-verde flex items-center">
-          <Activity className="text-creo-verde mr-4" size={32} />
+
+        {/* Tiempo Consulta */}
+        <div className="bg-white p-5 rounded-xl shadow border-t-4 border-creo-verde flex flex-col justify-between h-full">
           <div>
-            <p className="text-creo-gris text-xs font-semibold uppercase">T. Consulta Prom.</p>
-            <p className="text-2xl font-bold text-gray-800">{kpis.duracionConsultaPromedio} min</p>
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="text-gray-800 font-bold text-sm">T. Consulta Prom.</p>
+                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
+              </div>
+              <div className="bg-green-50 p-2 rounded-lg">
+                <Activity className="text-creo-verde" size={20} />
+              </div>
+            </div>
+            {kpis.duracionConsultaPromedio === null ? (
+              <p className="text-sm italic text-gray-400 mt-4">No aplica a esta zona</p>
+            ) : (
+              <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.duracionConsultaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
+            )}
           </div>
+          {kpis.duracionConsultaPromedio !== null && <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>}
         </div>
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-blue-500 flex items-center">
-          <CheckCircle className="text-blue-500 mr-4" size={32} />
+
+        {/* Atendidos */}
+        <div className="bg-white p-5 rounded-xl shadow border-t-4 border-blue-500 flex flex-col justify-between h-full">
           <div>
-            <p className="text-creo-gris text-xs font-semibold uppercase">Atendidos Hoy</p>
-            <p className="text-2xl font-bold text-gray-800">{kpis.pacientesAtendidos}</p>
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="text-gray-800 font-bold text-sm">Atendidos Hoy</p>
+                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
+              </div>
+              <div className="bg-blue-50 p-2 rounded-lg">
+                <CheckCircle className="text-blue-500" size={20} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.pacientesAtendidos}</p>
           </div>
+          <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow border border-gray-100">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow border border-gray-100 w-full">
           <h2 className="text-lg font-bold mb-4 text-creo-vino flex items-center">
             <MapPin className="mr-2" size={20} /> Mapa de Calor (Zonas en seguimiento)
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {mapaCalor.map(z => (
               <div key={z.zonaId} className={`p-4 rounded-lg shadow-sm border-2 flex flex-col items-center justify-center text-center h-28 ${getColorClass(z.color)}`}>
                 <p className="font-semibold text-sm leading-tight">{z.nombre}</p>
@@ -98,9 +156,9 @@ function PisoDashboardPanel({ pisoId, zonaId, pisoName }: { pisoId: number, zona
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow border border-gray-100">
+        <div className="bg-white p-6 rounded-xl shadow border border-gray-100 w-full">
           <h2 className="text-lg font-bold mb-4 text-creo-vino">Aforo Histórico</h2>
-          <div className="h-48">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={aforoHistorico}>
                 <XAxis dataKey="hora" tick={{fontSize: 12}} />

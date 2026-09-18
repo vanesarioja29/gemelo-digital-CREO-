@@ -21,6 +21,21 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        var dateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        var nullableDateTimeConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                    property.SetValueConverter(dateTimeConverter);
+                else if (property.ClrType == typeof(DateTime?))
+                    property.SetValueConverter(nullableDateTimeConverter);
+            }
+        }
         modelBuilder.Entity<Usuario>()
             .HasIndex(u => u.NombreUsuario)
             .IsUnique();

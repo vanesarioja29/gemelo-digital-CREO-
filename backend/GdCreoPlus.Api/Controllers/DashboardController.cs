@@ -58,6 +58,7 @@ public class DashboardController : ControllerBase
         if (zonaId.HasValue) 
         {
             qEnCircuito = qEnCircuito.Where(s => s.ZonaActualId == zonaId);
+            qAtendidos = qAtendidos.Where(s => s.ZonaActualId == zonaId);
         }
         else if (pisoId.HasValue)
         {
@@ -67,30 +68,41 @@ public class DashboardController : ControllerBase
         else if (assignedPisos != null)
         {
             qEnCircuito = qEnCircuito.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
+            qAtendidos = qAtendidos.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
         }
 
         var aforoActual = await qEnCircuito.CountAsync();
         
-        var atendidos = await _context.SesionesCircuito.CountAsync(s => s.Estado == EstadoSesion.Atendido);
+        var atendidos = await qAtendidos.CountAsync();
         
         var hoy = DateTime.UtcNow.Date;
-        var sesionesHoy = await _context.SesionesCircuito
-            .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy)
-            .ToListAsync();
+        var qSesionesHoy = _context.SesionesCircuito
+            .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy);
 
-        double tiempoEsperaPromedioMins = 0;
-        double duracionConsultaPromedioMins = 0;
+        if (zonaId.HasValue) qSesionesHoy = qSesionesHoy.Where(s => s.ZonaActualId == zonaId);
+        else if (pisoId.HasValue) qSesionesHoy = qSesionesHoy.Where(s => s.ZonaActual != null && s.ZonaActual.PisoId == pisoId);
+        else if (assignedPisos != null) qSesionesHoy = qSesionesHoy.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
 
-        if (sesionesHoy.Any())
+        var sesionesHoy = await qSesionesHoy.ToListAsync();
+
+        double? tiempoEsperaPromedioMins = sesionesHoy.Any() ? Math.Round(sesionesHoy.Average(s => s.TiempoEsperaSegundos) / 60.0, 1) : 0;
+        double? duracionConsultaPromedioMins = sesionesHoy.Any() ? Math.Round(sesionesHoy.Average(s => s.DuracionConsultaSegundos) / 60.0, 1) : 0;
+
+        if (zonaId.HasValue)
         {
-            tiempoEsperaPromedioMins = sesionesHoy.Average(s => s.TiempoEsperaSegundos) / 60.0;
-            duracionConsultaPromedioMins = sesionesHoy.Average(s => s.DuracionConsultaSegundos) / 60.0;
+            var zona = await _context.Zonas.FindAsync(zonaId.Value);
+            if (zona != null)
+            {
+                if (zona.Tipo == TipoZona.SalaDeEspera) duracionConsultaPromedioMins = null;
+                else if (zona.Tipo == TipoZona.Consultorio) tiempoEsperaPromedioMins = null;
+                else if (zona.Tipo == TipoZona.Admision) { tiempoEsperaPromedioMins = null; duracionConsultaPromedioMins = null; }
+            }
         }
 
         return Ok(new {
             AforoActual = aforoActual,
-            TiempoEsperaPromedio = Math.Round(tiempoEsperaPromedioMins, 1),
-            DuracionConsultaPromedio = Math.Round(duracionConsultaPromedioMins, 1),
+            TiempoEsperaPromedio = tiempoEsperaPromedioMins,
+            DuracionConsultaPromedio = duracionConsultaPromedioMins,
             PacientesAtendidos = atendidos
         });
     }
