@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, Users, Clock, CheckCircle, MapPin, Download } from 'lucide-react';
+import { Activity, Users, Clock, CheckCircle, MapPin, Download, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -93,15 +93,15 @@ function PisoDashboardPanel({
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Aforo Actual */}
-        <div className={`bg-white p-5 rounded-xl shadow border-t-4 ${aforoColor} flex flex-col justify-between h-full`}>
+        <div className={`bg-white p-5 rounded-xl shadow-sm border-t-4 ${aforoColor} flex flex-col justify-between h-full`}>
           <div>
             <div className="flex justify-between items-start mb-2">
               <div>
                 <p className="text-gray-800 font-bold text-sm">Aforo Actual</p>
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
-              <div className="bg-red-50 p-2 rounded-lg">
-                <Users className="text-creo-vino" size={24} />
+              <div className={`${aforoIconBg} p-2 rounded-lg`}>
+                <Users className={aforoTextColor} size={24} />
               </div>
             </div>
             <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.aforoActual} <span className="text-sm font-normal text-gray-500">/ {totalAforoMaximo} pac.</span></p>
@@ -111,15 +111,15 @@ function PisoDashboardPanel({
         </div>
 
         {/* Tiempo Espera */}
-        <div className="bg-white p-5 rounded-xl shadow border-t-4 border-creo-naranja flex flex-col justify-between h-full">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
           <div>
             <div className="flex justify-between items-start mb-2">
               <div>
-                <p className="text-gray-800 font-bold text-sm">T. Espera Prom.</p>
+                <p className="text-gray-800 font-bold text-sm">Tiempo Espera Prom.</p>
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
-              <div className="bg-orange-50 p-2 rounded-lg">
-                <Clock className="text-creo-naranja" size={24} />
+              <div className="border border-gray-100 p-2 rounded-lg">
+                <Clock className="text-gray-400" size={24} />
               </div>
             </div>
             {kpis.tiempoEsperaPromedio === null ? (
@@ -132,15 +132,15 @@ function PisoDashboardPanel({
         </div>
 
         {/* Tiempo Consulta */}
-        <div className="bg-white p-5 rounded-xl shadow border-t-4 border-creo-verde flex flex-col justify-between h-full">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
           <div>
             <div className="flex justify-between items-start mb-2">
               <div>
-                <p className="text-gray-800 font-bold text-sm">T. Consulta Prom.</p>
+                <p className="text-gray-800 font-bold text-sm">Duración Prom. Consulta</p>
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
-              <div className="bg-green-50 p-2 rounded-lg">
-                <Activity className="text-creo-verde" size={24} />
+              <div className="border border-gray-100 p-2 rounded-lg">
+                <Activity className="text-gray-400" size={24} />
               </div>
             </div>
             {kpis.duracionConsultaPromedio === null ? (
@@ -153,20 +153,20 @@ function PisoDashboardPanel({
         </div>
 
         {/* Atendidos */}
-        <div className="bg-white p-5 rounded-xl shadow border-t-4 border-blue-500 flex flex-col justify-between h-full">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
           <div>
             <div className="flex justify-between items-start mb-2">
               <div>
-                <p className="text-gray-800 font-bold text-sm">Atendidos Hoy</p>
+                <p className="text-gray-800 font-bold text-sm">Pacientes Atendidos</p>
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
-              <div className="bg-blue-50 p-2 rounded-lg">
-                <CheckCircle className="text-blue-500" size={24} />
+              <div className="border border-gray-100 p-2 rounded-lg">
+                <CheckCircle className="text-gray-400" size={24} />
               </div>
             </div>
-            <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.pacientesAtendidos}</p>
+            <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.pacientesAtendidos} <span className="text-sm font-normal text-gray-500">hoy</span></p>
           </div>
-          <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>
+          <p className="text-xs font-medium mt-4 text-gray-400">Actualizado en tiempo real</p>
         </div>
       </div>
 
@@ -176,22 +176,32 @@ function PisoDashboardPanel({
         {/* Mapa de Calor */}
         <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="bg-white p-6 rounded-xl shadow border border-gray-100 flex-1">
-            <h2 className="text-lg font-bold mb-4 text-creo-vino flex items-center">
-              <MapPin className="mr-2" size={20} /> Mapa de Calor (Zonas en seguimiento)
-            </h2>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  Mapa de Calor en Tiempo Real
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">Distribución de aforo por zonas</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                <span className="w-2 h-2 rounded-full bg-creo-verde"></span> Actualizado: hace 3 seg
+              </div>
+            </div>
             <div className="flex flex-wrap gap-4">
               {mapaCalor.map(z => {
                 const isEspera = z.nombre.toLowerCase().includes('espera');
-                let colorClass = 'bg-gray-200 border-gray-300 text-gray-800';
-                if (z.color === 'verde') colorClass = 'bg-creo-verde text-white border-green-700';
-                if (z.color === 'amarillo') colorClass = 'bg-creo-naranja text-white border-orange-600';
-                if (z.color === 'rojo') colorClass = 'bg-creo-vino text-white border-red-900';
+                let colorClass = 'bg-gray-200 text-gray-800';
+                if (z.color === 'verde') colorClass = 'bg-creo-verde text-white';
+                if (z.color === 'amarillo') colorClass = 'bg-orange-500 text-white';
+                if (z.color === 'rojo') colorClass = 'bg-creo-vino text-white';
 
                 return (
-                  <div key={z.zonaId} className={`p-4 rounded-lg shadow-sm border-2 flex flex-col items-center justify-center text-center h-28 ${colorClass} ${isEspera ? 'flex-[2] min-w-[200px]' : 'flex-1 min-w-[120px]'}`}>
-                    <p className="font-semibold text-sm leading-tight">{z.nombre}</p>
-                    <p className="text-3xl font-bold my-1">{z.ocupacion} <span className="text-sm font-normal opacity-80">/ {z.aforoMaximo}</span></p>
-                    <p className="text-xs opacity-90">{Math.round(z.porcentaje)}% ocupado</p>
+                  <div key={z.zonaId} className={`p-4 rounded-xl flex flex-col items-center justify-center text-center h-32 ${colorClass} ${isEspera ? 'flex-[2] min-w-[200px]' : 'flex-1 min-w-[120px]'}`}>
+                    <p className="font-semibold text-sm leading-tight flex items-center gap-1.5">
+                      {isEspera && z.color !== 'verde' && <AlertTriangle size={16} />}
+                      {z.nombre}
+                    </p>
+                    <p className="text-xl font-bold mt-2">{z.ocupacion} pac.</p>
                   </div>
                 );
               })}

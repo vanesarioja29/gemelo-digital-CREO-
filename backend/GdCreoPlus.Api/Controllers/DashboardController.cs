@@ -176,12 +176,36 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!await ValidatePisoAndZonaAsync(pisoId, zonaId, assignedPisos)) return Forbid();
 
-        // Mock data
-        var rnd = new Random();
-        var data = Enumerable.Range(8, 12).Select(h => new {
-            Hora = $"{h}:00",
-            Aforo = rnd.Next(5, 50)
+        var hoy = DateTime.UtcNow.Date;
+        var qEventos = _context.EventosDeteccion.Where(e => e.Timestamp.Date == hoy);
+
+        if (zonaId.HasValue)
+            qEventos = qEventos.Where(e => e.ZonaId == zonaId.Value);
+        else if (pisoId.HasValue)
+            qEventos = qEventos.Where(e => e.Zona.PisoId == pisoId.Value);
+        else if (assignedPisos != null)
+            qEventos = qEventos.Where(e => assignedPisos.Contains(e.Zona.PisoId));
+
+        var eventos = await qEventos.ToListAsync();
+
+        var agrupadoporHora = eventos
+            .GroupBy(e => e.Timestamp.Hour)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.SesionCircuitoId).Distinct().Count());
+
+        int startHour = 7;
+        int endHour = 19;
+        
+        if (agrupadoporHora.Any())
+        {
+            startHour = Math.Min(startHour, agrupadoporHora.Keys.Min());
+            endHour = Math.Max(endHour, agrupadoporHora.Keys.Max());
+        }
+
+        var data = Enumerable.Range(startHour, endHour - startHour + 1).Select(h => new {
+            Hora = $"{h:00}:00",
+            Aforo = agrupadoporHora.ContainsKey(h) ? agrupadoporHora[h] : 0
         });
+
         return Ok(data);
     }
 }
