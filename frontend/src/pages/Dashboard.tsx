@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, Users, Clock, CheckCircle, MapPin, Download, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Activity, Users, Clock, CheckCircle, MapPin, Download, AlertTriangle, Globe } from 'lucide-react';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import FiltroContexto from '../components/FiltroContexto';
@@ -50,7 +50,8 @@ function PisoDashboardPanel({
     return () => clearInterval(interval);
   }, [pisoId, zonaId]);
 
-  const totalAforoMaximo = mapaCalor.reduce((acc, z) => acc + z.aforoMaximo, 0);
+  const filteredMapaCalor = zonaId ? mapaCalor.filter(z => z.zonaId === zonaId) : mapaCalor;
+  const totalAforoMaximo = filteredMapaCalor.reduce((acc, z) => acc + z.aforoMaximo, 0);
   const aforoPct = totalAforoMaximo > 0 ? (kpis.aforoActual / totalAforoMaximo) * 100 : 0;
   
   let aforoColor = 'border-creo-verde';
@@ -68,6 +69,8 @@ function PisoDashboardPanel({
     zonaMasSaturada = maxZ.nombre;
   }
 
+  const zonaName = zonaId && filteredMapaCalor.length > 0 ? filteredMapaCalor[0].nombre : 'Todas las zonas';
+
   const enCircuito = actividad.filter(a => a.estado === 'EnCircuito');
   const atendidos = actividad.filter(a => a.estado === 'Atendido');
 
@@ -80,8 +83,8 @@ function PisoDashboardPanel({
   const getBarColor = (entry: any) => {
     const threshold = totalAforoMaximo > 0 ? (entry.aforo / totalAforoMaximo) * 100 : 0;
     if (threshold >= 100) return '#AA0831'; // rojo vino
-    if (threshold >= 70) return '#f97316'; // naranja
-    return '#16a34a'; // verde
+    if (threshold >= 70) return '#FBB000'; // amarillo/naranja
+    return '#2E8B57'; // verde
   };
 
   return (
@@ -92,91 +95,122 @@ function PisoDashboardPanel({
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 shrink-0">
         {/* Aforo Actual */}
-        <div className={`bg-white p-5 rounded-xl shadow-sm border-t-4 ${aforoColor} flex flex-col justify-between h-full`}>
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="text-gray-800 font-bold text-sm">Aforo Actual</p>
-                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
-              </div>
-              <div className={`${aforoIconBg} p-2 rounded-lg`}>
-                <Users className={aforoTextColor} size={24} />
-              </div>
+        <div className={`bg-white rounded-xl p-5 shadow-sm border-t-4 flex flex-col gap-2 relative overflow-hidden transition-colors ${aforoColor}`}>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-gray-800 font-bold text-sm flex items-center gap-1.5">
+                Aforo Actual
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[180px]">{subtituloAlcance}</p>
             </div>
-            <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.aforoActual} <span className="text-sm font-normal text-gray-500">/ {totalAforoMaximo} pac.</span></p>
-            {!zonaId && zonaMasSaturada && <p className="text-[10px] text-gray-400 mt-1">Zona más saturada: {zonaMasSaturada}</p>}
+            <div className={`${aforoIconBg} p-2 rounded-lg shrink-0`}>
+              <Users size={20} className={aforoTextColor} />
+            </div>
           </div>
-          <p className={`text-xs font-medium mt-4 ${aforoTextColor}`}>{aforoText}</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl font-bold text-gray-800 tracking-tight">{kpis.aforoActual}</span>
+            <span className="text-gray-500 font-medium">/ {totalAforoMaximo} pac.</span>
+          </div>
+          {!zonaId && zonaMasSaturada && (
+            <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
+              Zona más saturada: {zonaMasSaturada}
+            </div>
+          )}
+          <div className={`text-xs font-bold flex items-center gap-1 mt-1 ${aforoTextColor}`}>
+            {aforoText}
+          </div>
         </div>
 
         {/* Tiempo Espera */}
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="text-gray-800 font-bold text-sm">Tiempo Espera Prom.</p>
-                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
-              </div>
-              <div className="border border-gray-100 p-2 rounded-lg">
-                <Clock className="text-gray-400" size={24} />
-              </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border-t-4 border-t-gray-200 flex flex-col gap-2 relative overflow-hidden transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-gray-800 font-bold text-sm flex items-center gap-1.5">
+                Tiempo Espera Prom.
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[180px]">Zonas de espera · {pisoName}</p>
             </div>
-            {kpis.tiempoEsperaPromedio === null ? (
-              <p className="text-sm italic text-gray-400 mt-4">No aplica a esta zona</p>
-            ) : (
-              <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.tiempoEsperaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
-            )}
+            <div className="bg-gray-100 p-2 rounded-lg shrink-0">
+              <Clock size={20} className="text-gray-400" />
+            </div>
           </div>
-          {kpis.tiempoEsperaPromedio !== null && <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>}
+          {kpis.tiempoEsperaPromedio !== null ? (
+            <>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-4xl font-bold text-gray-800 tracking-tight">{kpis.tiempoEsperaPromedio}</span>
+                <span className="text-gray-500 font-medium">min</span>
+              </div>
+              <div className="text-xs font-bold flex items-center gap-1 mt-1 text-gray-500">
+                ↑ 5 min vs ayer
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center h-[52px] mt-1">
+              <span className="text-sm font-medium text-gray-500 italic">No aplica a esta zona</span>
+            </div>
+          )}
         </div>
 
-        {/* Tiempo Consulta */}
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="text-gray-800 font-bold text-sm">Duración Prom. Consulta</p>
-                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
-              </div>
-              <div className="border border-gray-100 p-2 rounded-lg">
-                <Activity className="text-gray-400" size={24} />
-              </div>
+        {/* Duracion Consulta */}
+        <div className="bg-white rounded-xl p-5 shadow-sm border-t-4 border-t-gray-200 flex flex-col gap-2 relative overflow-hidden transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-gray-800 font-bold text-sm flex items-center gap-1.5">
+                Duración Prom. Consulta
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[180px]">Consultorios · {pisoName}</p>
             </div>
-            {kpis.duracionConsultaPromedio === null ? (
-              <p className="text-sm italic text-gray-400 mt-4">No aplica a esta zona</p>
-            ) : (
-              <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.duracionConsultaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
-            )}
+            <div className="bg-gray-100 p-2 rounded-lg shrink-0">
+              <Activity size={20} className="text-gray-400" />
+            </div>
           </div>
-          {kpis.duracionConsultaPromedio !== null && <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>}
+          {kpis.duracionConsultaPromedio !== null ? (
+            <>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-4xl font-bold text-gray-800 tracking-tight">{kpis.duracionConsultaPromedio}</span>
+                <span className="text-gray-500 font-medium">min</span>
+              </div>
+              <div className="text-xs font-bold flex items-center gap-1 mt-1 text-gray-500">
+                Dentro de lo esperado
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center h-[52px] mt-1">
+              <span className="text-sm font-medium text-gray-500 italic">No aplica a esta zona</span>
+            </div>
+          )}
         </div>
 
         {/* Atendidos */}
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="text-gray-800 font-bold text-sm">Pacientes Atendidos</p>
-                <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
-              </div>
-              <div className="border border-gray-100 p-2 rounded-lg">
-                <CheckCircle className="text-gray-400" size={24} />
-              </div>
+        <div className="bg-white rounded-xl p-5 shadow-sm border-t-4 border-t-gray-200 flex flex-col gap-2 relative overflow-hidden transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-gray-800 font-bold text-sm flex items-center gap-1.5">
+                <Globe size={14} className="text-gray-500" /> Pacientes Atendidos
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[180px]">Total Clínica · Todos los pisos</p>
             </div>
-            <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.pacientesAtendidos} <span className="text-sm font-normal text-gray-500">hoy</span></p>
+            <div className="bg-gray-100 p-2 rounded-lg shrink-0">
+              <CheckCircle size={20} className="text-gray-400" />
+            </div>
           </div>
-          <p className="text-xs font-medium mt-4 text-gray-400">Actualizado en tiempo real</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-4xl font-bold text-gray-800 tracking-tight">{kpis.pacientesAtendidos}</span>
+            <span className="text-gray-500 font-medium">hoy</span>
+          </div>
+          <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
+            Actualizado en tiempo real
+          </div>
         </div>
       </div>
 
       {/* Row 1: Mapa de Calor + Actividad en Circuito */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 xl:gap-6 lg:h-[400px] min-h-[400px]">
         
         {/* Mapa de Calor */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          <div className="bg-white p-6 rounded-xl shadow border border-gray-100 flex-1">
+        <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col lg:w-[60%] border border-gray-100 h-full">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-800">
@@ -185,136 +219,155 @@ function PisoDashboardPanel({
                 <p className="text-xs text-gray-500 mt-0.5">Distribución de aforo por zonas</p>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                <span className="w-2 h-2 rounded-full bg-creo-verde"></span> Actualizado: hace 3 seg
+                <span className="w-2 h-2 rounded-full bg-creo-verde animate-pulse"></span> Actualizado: hace 3 seg
               </div>
             </div>
-            <div className="flex flex-wrap gap-4">
-              {mapaCalor.map(z => {
-                const isEspera = z.nombre.toLowerCase().includes('espera');
-                let colorClass = 'bg-gray-200 text-gray-800';
-                if (z.color === 'verde') colorClass = 'bg-creo-verde text-white';
-                if (z.color === 'amarillo') colorClass = 'bg-orange-500 text-white';
-                if (z.color === 'rojo') colorClass = 'bg-creo-vino text-white';
+            
+            <div className="relative flex-1 bg-gray-50 rounded-xl border border-gray-100 overflow-visible min-h-[200px] flex items-center justify-between p-4 lg:p-6 gap-2 lg:gap-4 w-full h-full">
+              {mapaCalor.map((z) => {
+                const isSelected = !zonaId || (zonaId && z.zonaId === zonaId); // assuming we have the current selected filter logic
+                let bgClass = 'bg-creo-verde';
+                let label = 'Normal';
+                if (z.color === 'amarillo') { bgClass = 'bg-creo-naranja'; label = 'Cerca del límite'; }
+                if (z.color === 'rojo') { bgClass = 'bg-creo-vino'; label = 'Límite excedido'; }
+                
+                let widthClass = "w-1/4";
+                let heightClass = "h-[50%]";
+                if (z.nombre === "Sala de Espera General" || z.nombre.toLowerCase().includes('espera')) {
+                  widthClass = "w-2/4";
+                  heightClass = "h-[90%]";
+                } else if (z.nombre === "Consultorio Piloto" || z.nombre.toLowerCase().includes('consultorio')) {
+                  heightClass = "h-[40%]";
+                }
 
                 return (
-                  <div key={z.zonaId} className={`p-4 rounded-xl flex flex-col items-center justify-center text-center h-32 ${colorClass} ${isEspera ? 'flex-[2] min-w-[200px]' : 'flex-1 min-w-[120px]'}`}>
-                    <p className="font-semibold text-sm leading-tight flex items-center gap-1.5">
-                      {isEspera && z.color !== 'verde' && <AlertTriangle size={16} />}
-                      {z.nombre}
-                    </p>
-                    <p className="text-xl font-bold mt-2">{z.ocupacion} pac.</p>
+                  <div key={z.zonaId} className={`relative ${widthClass} ${heightClass} group transition-all duration-300 ${!isSelected ? "opacity-40 grayscale" : "opacity-100"}`}>
+                    <div className={`absolute inset-0 rounded-xl shadow-sm flex flex-col items-center justify-center text-white transition-colors ${bgClass}`}>
+                      <div className="flex items-center justify-center gap-1 font-bold text-center px-1 text-xs lg:text-sm">
+                        {z.nombre.toLowerCase().includes('espera') && <AlertTriangle size={14} className="shrink-0" />}
+                        {z.nombre}
+                      </div>
+                      <span className="text-sm font-bold mt-1 bg-black/20 px-2 py-0.5 rounded-full">{z.ocupacion} pac.</span>
+                    </div>
+                    
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-white text-gray-800 rounded-lg shadow-xl border border-gray-100 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                      <div className="font-bold text-sm mb-1">{z.nombre}</div>
+                      <div className="text-xs text-gray-500 mb-1">Aforo actual: <span className="font-bold text-gray-800">{z.ocupacion} pacientes</span></div>
+                      <div className="text-xs text-gray-500 mb-2">Aforo máximo: {z.maxAforo} pacientes</div>
+                      <div className="text-xs font-semibold flex items-center gap-1.5">
+                        <div className={`w-2.5 h-2.5 rounded ${bgClass}`}></div>
+                        Estado: {label}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
-              {mapaCalor.length === 0 && <p className="text-gray-500 text-sm w-full">No hay zonas activas en seguimiento en este piso.</p>}
-            </div>
-
-            {/* Leyenda de Colores */}
-            {mapaCalor.length > 0 && (
-              <div className="mt-6 flex flex-wrap gap-4 text-xs font-medium text-gray-600 bg-gray-50 p-3 rounded border inline-flex items-center">
-                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-creo-verde"></span> Normal</div>
-                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-creo-naranja"></span> Cerca del límite</div>
-                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-creo-vino"></span> Límite excedido</div>
+              
+              <div className="absolute bottom-4 left-4 bg-white/90 p-3 rounded-lg shadow-sm border border-gray-100 flex items-center gap-3 text-[10px] lg:text-xs font-medium text-gray-500 backdrop-blur-sm z-10 pointer-events-none">
+                <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded bg-creo-verde"></div> Normal</div>
+                <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded bg-creo-naranja"></div> Cerca del límite</div>
+                <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded bg-creo-vino"></div> Límite excedido</div>
               </div>
-            )}
           </div>
         </div>
 
-        {/* Actividad en Circuito (Specific to this Piso) */}
-        <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-full flex flex-col">
-            <div className="flex justify-between items-center border-b pb-4 mb-4">
-              <h2 className="text-lg font-bold text-creo-vino flex items-center">
-                Actividad en Circuito
-              </h2>
-              {userRol !== 'Gerencia' && (
-                <button 
-                  onClick={() => onExport(pisoId)}
-                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors"
-                  title="Exportar Actividad de Hoy (CSV)"
-                >
-                  <Download size={18} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-              {/* Activos */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">En Seguimiento (Activos)</h3>
-                <div className="space-y-3">
-                  {enCircuito.map(act => {
-                    let borderColor = 'border-gray-500';
-                    let IconName = MapPin;
-                    let actionText = 'Esperando';
-                    let actionColor = 'text-gray-500';
-                    
-                    if (act.zonaActualTipo === 'Consultorio') {
-                      borderColor = 'border-creo-naranja';
-                      IconName = Activity;
-                      actionText = 'En consulta';
-                      actionColor = 'text-creo-naranja';
-                    } else if (act.zonaActualTipo === 'Admision') {
-                      actionText = 'En admisión';
-                    }
-
-                    return (
-                      <div key={act.id} className={`border-l-4 ${borderColor} pl-3 py-1 bg-gray-50/50 rounded-r`}>
-                        <p className="font-bold text-gray-800 text-sm">{act.codigoPacienteAnonimo}</p>
-                        <p className="text-xs text-gray-600 flex justify-between mt-1 items-center">
-                          <span className="font-medium text-gray-700 flex items-center gap-1">
-                            <IconName size={14} /> {act.zonaActual}
-                          </span>
-                          <span className={`${actionColor} font-medium flex items-center gap-1`}>
-                            <Clock size={12} /> {actionText}: {calcMinutes(act.horaIngreso, null)} min
-                          </span>
-                        </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">Ingresó: {new Date(act.horaIngreso).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                      </div>
-                    );
-                  })}
-                  {enCircuito.length === 0 && <p className="text-xs text-gray-400 italic">No hay pacientes activos.</p>}
-                </div>
+        {/* Actividad en Circuito */}
+        <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col lg:w-[40%] border border-gray-100 h-full overflow-hidden">
+          <div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 shrink-0">
+              <h2 className="text-lg font-bold text-gray-800">Actividad en Circuito</h2>
+              <div className="flex items-center gap-2 self-start">
+                <span className="bg-gray-100 px-2.5 py-1.5 rounded-md text-xs font-semibold text-gray-800 shadow-sm shrink-0">
+                  {pisoName} {zonaName !== 'Todas las zonas' ? `· ${zonaName}` : ''}
+                </span>
+                {userRol !== 'Gerencia' && (
+                  <div className="relative group">
+                    <button onClick={() => onExport(pisoId)} className="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-1.5 rounded-md text-xs font-semibold text-gray-800 hover:bg-gray-50 shadow-sm cursor-pointer">
+                      <Download size={14} className="text-gray-500" /> Exportar CSV
+                    </button>
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-gray-800 text-white text-[11px] p-2 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      Exporta el historial completo del día para el filtro actual.
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {/* Atendidos */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pt-2 border-t">Atendidos Recientemente</h3>
-                <div className="space-y-3">
-                  {atendidos.map(act => (
-                    <div key={act.id} className="border-l-4 border-creo-verde pl-3 py-1 bg-gray-50/50 rounded-r opacity-80">
-                      <p className="font-bold text-gray-700 text-sm">{act.codigoPacienteAnonimo}</p>
-                      <p className="text-xs text-gray-600 flex justify-between mt-1 items-center">
-                        <span className="font-medium text-gray-500 flex items-center gap-1">
-                          <CheckCircle size={14} className="text-creo-verde" /> {act.zonaActual}
-                        </span>
-                        <span className="text-creo-verde font-medium">Total: {calcMinutes(act.horaIngreso, act.horaSalida)} min</span>
-                      </p>
+            </div>
+            
+            <div className="flex justify-between items-end mb-2 px-1 shrink-0">
+              <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Paciente / Estado</h3>
+              <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Tiempo en circuito</h3>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
+                  {enCircuito.map((act) => (
+                    <div key={act.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-white hover:border-gray-200 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-10 rounded-full ${act.zonaActualTipo === 'Consultorio' ? 'bg-creo-naranja' : 'bg-gray-500'}`}></div>
+                        <div>
+                          <div className="font-semibold text-gray-800 text-sm">Paciente #{act.codigoPacienteAnonimo}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-medium"><MapPin size={12} /> {act.zonaActual}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono text-sm text-gray-800 font-medium flex items-center justify-end gap-1.5">
+                          <Clock size={12} className="text-creo-vino animate-pulse" />
+                          {act.zonaActualTipo === 'Consultorio' ? 'En consulta:' : 'Esperando:'} {calcMinutes(act.horaIngreso, null)} min
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">Ingreso: {new Date(act.horaIngreso).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                      </div>
                     </div>
                   ))}
-                  {atendidos.length === 0 && <p className="text-xs text-gray-400 italic">No hay pacientes atendidos recientemente.</p>}
+                  {enCircuito.length === 0 && <div className="text-center py-4 text-sm text-gray-500 font-medium">No hay pacientes activos en esta zona.</div>}
                 </div>
+
+                {atendidos.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-3 px-1 my-1 opacity-50">
+                      <div className="h-px bg-gray-200 flex-1"></div>
+                      <span className="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Atendidos</span>
+                      <div className="h-px bg-gray-200 flex-1"></div>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {atendidos.map((act) => (
+                        <div key={act.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-50 hover:bg-gray-100 opacity-80">
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-10 rounded-full bg-creo-verde"></div>
+                            <div>
+                              <div className="font-semibold text-gray-800 text-sm">Paciente #{act.codigoPacienteAnonimo}</div>
+                              <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><CheckCircle size={12} /> Atendido</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-mono text-sm text-gray-800 font-medium">Duración total: {calcMinutes(act.horaIngreso, act.horaSalida)} min</div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">Ingreso: {new Date(act.horaIngreso).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} <span className="mx-1 opacity-50">•</span> Salida: {act.horaSalida ? new Date(act.horaSalida).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       {/* Row 2: Aforo Histórico (100% width) */}
       <div className="grid grid-cols-1">
-        <div className="bg-white p-6 rounded-xl shadow border border-gray-100 w-full">
-          <h2 className="text-lg font-bold text-creo-vino">
-            Aforo Histórico — {pisoName} · {zonaId && mapaCalor.length > 0 ? mapaCalor[0].nombre : 'Todas las zonas'}
-          </h2>
-          <p className="text-xs text-gray-500 mb-4 mt-1">Evolución de la jornada vs. límite recomendado ({totalAforoMaximo} pacientes)</p>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={aforoHistorico} barCategoryGap="35%">
-                <XAxis dataKey="hora" tick={{fontSize: 12}} />
-                <YAxis tick={{fontSize: 12}} />
-                <Tooltip cursor={{fill: '#f3f4f6'}} />
-                <ReferenceLine y={totalAforoMaximo} strokeDasharray="3 3" stroke="#9ca3af" />
-                <Bar dataKey="aforo" radius={[4, 4, 0, 0]} maxBarSize={40}>
+        <section className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 shrink-0 flex flex-col h-64 w-full">
+          <div className="mb-4 shrink-0">
+            <h2 className="text-lg font-bold text-gray-800">Aforo Histórico — {pisoName} · {zonaName}</h2>
+            <p className="text-gray-500 text-sm">Evolución de la jornada vs. límite recomendado ({totalAforoMaximo} pacientes)</p>
+          </div>
+          <div className="w-full flex-1 min-h-0 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <BarChart data={aforoHistorico} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="hora" axisLine={false} tickLine={false} tick={{ fill: '#6E6E6E', fontSize: 12 }} dy={10} />
+                <YAxis domain={[0, (dataMax: number) => Math.max(dataMax, totalAforoMaximo) + Math.ceil(totalAforoMaximo * 0.15)]} axisLine={false} tickLine={false} tick={{ fill: '#6E6E6E', fontSize: 12 }} />
+                <Tooltip cursor={{ fill: '#F7F7F8' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <ReferenceLine y={totalAforoMaximo} stroke="#6E6E6E" strokeDasharray="3 3" />
+                <Bar dataKey="aforo" radius={[4, 4, 0, 0]} maxBarSize={50}>
                   {aforoHistorico.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getBarColor(entry)} />
                   ))}
@@ -322,7 +375,7 @@ function PisoDashboardPanel({
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
