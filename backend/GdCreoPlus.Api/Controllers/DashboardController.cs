@@ -53,35 +53,38 @@ public class DashboardController : ControllerBase
         if (!await ValidatePisoAndZonaAsync(pisoId, zonaId, assignedPisos)) return Forbid();
 
         var qEnCircuito = _context.SesionesCircuito.Include(s => s.ZonaActual).Where(s => s.Estado == EstadoSesion.EnCircuito && s.ZonaActual != null && s.ZonaActual.EnSeguimiento);
-        var qAtendidos = _context.SesionesCircuito.Include(s => s.ZonaActual).Where(s => s.Estado == EstadoSesion.Atendido);
 
         if (zonaId.HasValue) 
         {
             qEnCircuito = qEnCircuito.Where(s => s.ZonaActualId == zonaId);
-            qAtendidos = qAtendidos.Where(s => s.ZonaActualId == zonaId);
         }
         else if (pisoId.HasValue)
         {
             qEnCircuito = qEnCircuito.Where(s => s.ZonaActual != null && s.ZonaActual.PisoId == pisoId);
-            qAtendidos = qAtendidos.Where(s => s.ZonaActual != null && s.ZonaActual.PisoId == pisoId); 
         }
         else if (assignedPisos != null)
         {
             qEnCircuito = qEnCircuito.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
-            qAtendidos = qAtendidos.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
         }
 
         var aforoActual = await qEnCircuito.CountAsync();
         
-        var atendidos = await qAtendidos.CountAsync();
-        
         var hoy = DateTime.UtcNow.Date;
+        
+        var atendidos = await _context.SesionesCircuito.CountAsync(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy);
+        
         var qSesionesHoy = _context.SesionesCircuito
             .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy);
 
-        if (zonaId.HasValue) qSesionesHoy = qSesionesHoy.Where(s => s.ZonaActualId == zonaId);
-        else if (pisoId.HasValue) qSesionesHoy = qSesionesHoy.Where(s => s.ZonaActual != null && s.ZonaActual.PisoId == pisoId);
-        else if (assignedPisos != null) qSesionesHoy = qSesionesHoy.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
+        if (zonaId.HasValue) {
+            qSesionesHoy = qSesionesHoy.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && e.ZonaId == zonaId));
+        }
+        else if (pisoId.HasValue) {
+            qSesionesHoy = qSesionesHoy.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && e.Zona.PisoId == pisoId));
+        }
+        else if (assignedPisos != null) {
+            qSesionesHoy = qSesionesHoy.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && assignedPisos.Contains(e.Zona.PisoId)));
+        }
 
         var sesionesHoy = await qSesionesHoy.ToListAsync();
 
