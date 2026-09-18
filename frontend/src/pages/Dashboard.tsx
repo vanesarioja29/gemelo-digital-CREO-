@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Activity, Users, Clock, CheckCircle, MapPin, Download } from 'lucide-react';
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import FiltroContexto from '../components/FiltroContexto';
@@ -101,10 +101,10 @@ function PisoDashboardPanel({
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
               <div className="bg-red-50 p-2 rounded-lg">
-                <Users className="text-creo-vino" size={20} />
+                <Users className="text-creo-vino" size={24} />
               </div>
             </div>
-            <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.aforoActual} <span className="text-sm font-normal text-gray-500">/ {totalAforoMaximo} pac.</span></p>
+            <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.aforoActual} <span className="text-sm font-normal text-gray-500">/ {totalAforoMaximo} pac.</span></p>
             {!zonaId && zonaMasSaturada && <p className="text-[10px] text-gray-400 mt-1">Zona más saturada: {zonaMasSaturada}</p>}
           </div>
           <p className={`text-xs font-medium mt-4 ${aforoTextColor}`}>{aforoText}</p>
@@ -119,13 +119,13 @@ function PisoDashboardPanel({
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
               <div className="bg-orange-50 p-2 rounded-lg">
-                <Clock className="text-creo-naranja" size={20} />
+                <Clock className="text-creo-naranja" size={24} />
               </div>
             </div>
             {kpis.tiempoEsperaPromedio === null ? (
               <p className="text-sm italic text-gray-400 mt-4">No aplica a esta zona</p>
             ) : (
-              <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.tiempoEsperaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
+              <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.tiempoEsperaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
             )}
           </div>
           {kpis.tiempoEsperaPromedio !== null && <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>}
@@ -140,13 +140,13 @@ function PisoDashboardPanel({
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
               <div className="bg-green-50 p-2 rounded-lg">
-                <Activity className="text-creo-verde" size={20} />
+                <Activity className="text-creo-verde" size={24} />
               </div>
             </div>
             {kpis.duracionConsultaPromedio === null ? (
               <p className="text-sm italic text-gray-400 mt-4">No aplica a esta zona</p>
             ) : (
-              <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.duracionConsultaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
+              <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.duracionConsultaPromedio} <span className="text-sm font-normal text-gray-500">min</span></p>
             )}
           </div>
           {kpis.duracionConsultaPromedio !== null && <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>}
@@ -161,17 +161,17 @@ function PisoDashboardPanel({
                 <p className="text-gray-400 text-[10px]">{subtituloAlcance}</p>
               </div>
               <div className="bg-blue-50 p-2 rounded-lg">
-                <CheckCircle className="text-blue-500" size={20} />
+                <CheckCircle className="text-blue-500" size={24} />
               </div>
             </div>
-            <p className="text-3xl font-bold text-gray-800 mt-2">{kpis.pacientesAtendidos}</p>
+            <p className="text-5xl font-bold text-gray-800 mt-2">{kpis.pacientesAtendidos}</p>
           </div>
           <p className="text-xs font-medium mt-4 text-gray-400">&nbsp;</p>
         </div>
       </div>
 
       {/* Row 1: Mapa de Calor + Actividad en Circuito */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
         {/* Mapa de Calor */}
         <div className="lg:col-span-2 flex flex-col gap-4">
@@ -232,16 +232,36 @@ function PisoDashboardPanel({
               <div>
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">En Seguimiento (Activos)</h3>
                 <div className="space-y-3">
-                  {enCircuito.map(act => (
-                    <div key={act.id} className="border-l-4 border-creo-naranja pl-3 py-1 bg-gray-50/50 rounded-r">
-                      <p className="font-bold text-gray-800 text-sm">{act.codigoPacienteAnonimo}</p>
-                      <p className="text-xs text-gray-600 flex justify-between mt-1">
-                        <span className="font-medium text-creo-vino">{act.zonaActual}</span>
-                        <span className="text-creo-naranja font-medium">En espera: {calcMinutes(act.horaIngreso, null)} min</span>
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Ingresó: {new Date(act.horaIngreso).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                    </div>
-                  ))}
+                  {enCircuito.map(act => {
+                    let borderColor = 'border-gray-500';
+                    let IconName = MapPin;
+                    let actionText = 'Esperando';
+                    let actionColor = 'text-gray-500';
+                    
+                    if (act.zonaActualTipo === 'Consultorio') {
+                      borderColor = 'border-creo-naranja';
+                      IconName = Activity;
+                      actionText = 'En consulta';
+                      actionColor = 'text-creo-naranja';
+                    } else if (act.zonaActualTipo === 'Admision') {
+                      actionText = 'En admisión';
+                    }
+
+                    return (
+                      <div key={act.id} className={`border-l-4 ${borderColor} pl-3 py-1 bg-gray-50/50 rounded-r`}>
+                        <p className="font-bold text-gray-800 text-sm">{act.codigoPacienteAnonimo}</p>
+                        <p className="text-xs text-gray-600 flex justify-between mt-1 items-center">
+                          <span className="font-medium text-gray-700 flex items-center gap-1">
+                            <IconName size={14} /> {act.zonaActual}
+                          </span>
+                          <span className={`${actionColor} font-medium flex items-center gap-1`}>
+                            <Clock size={12} /> {actionText}: {calcMinutes(act.horaIngreso, null)} min
+                          </span>
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Ingresó: {new Date(act.horaIngreso).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                      </div>
+                    );
+                  })}
                   {enCircuito.length === 0 && <p className="text-xs text-gray-400 italic">No hay pacientes activos.</p>}
                 </div>
               </div>
@@ -253,8 +273,10 @@ function PisoDashboardPanel({
                   {atendidos.map(act => (
                     <div key={act.id} className="border-l-4 border-creo-verde pl-3 py-1 bg-gray-50/50 rounded-r opacity-80">
                       <p className="font-bold text-gray-700 text-sm">{act.codigoPacienteAnonimo}</p>
-                      <p className="text-xs text-gray-600 flex justify-between mt-1">
-                        <span className="font-medium text-gray-500">{act.zonaActual}</span>
+                      <p className="text-xs text-gray-600 flex justify-between mt-1 items-center">
+                        <span className="font-medium text-gray-500 flex items-center gap-1">
+                          <CheckCircle size={14} className="text-creo-verde" /> {act.zonaActual}
+                        </span>
                         <span className="text-creo-verde font-medium">Total: {calcMinutes(act.horaIngreso, act.horaSalida)} min</span>
                       </p>
                     </div>
@@ -270,14 +292,18 @@ function PisoDashboardPanel({
       {/* Row 2: Aforo Histórico (100% width) */}
       <div className="grid grid-cols-1">
         <div className="bg-white p-6 rounded-xl shadow border border-gray-100 w-full">
-          <h2 className="text-lg font-bold mb-4 text-creo-vino">Aforo Histórico</h2>
+          <h2 className="text-lg font-bold text-creo-vino">
+            Aforo Histórico — {pisoName} · {zonaId && mapaCalor.length > 0 ? mapaCalor[0].nombre : 'Todas las zonas'}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4 mt-1">Evolución de la jornada vs. límite recomendado ({totalAforoMaximo} pacientes)</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={aforoHistorico}>
+              <BarChart data={aforoHistorico} barCategoryGap="35%">
                 <XAxis dataKey="hora" tick={{fontSize: 12}} />
                 <YAxis tick={{fontSize: 12}} />
                 <Tooltip cursor={{fill: '#f3f4f6'}} />
-                <Bar dataKey="aforo" radius={[4, 4, 0, 0]}>
+                <ReferenceLine y={totalAforoMaximo} strokeDasharray="3 3" stroke="#9ca3af" />
+                <Bar dataKey="aforo" radius={[4, 4, 0, 0]} maxBarSize={40}>
                   {aforoHistorico.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getBarColor(entry)} />
                   ))}

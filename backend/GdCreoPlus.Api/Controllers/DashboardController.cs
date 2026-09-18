@@ -162,6 +162,7 @@ public class DashboardController : ControllerBase
             s.CodigoPacienteAnonimo,
             Estado = s.Estado.ToString(),
             ZonaActual = s.ZonaActual != null ? s.ZonaActual.Nombre : "Ninguna",
+            ZonaActualTipo = s.ZonaActual != null ? s.ZonaActual.Tipo.ToString() : null,
             s.HoraIngreso,
             s.HoraSalida
         }).ToListAsync();
