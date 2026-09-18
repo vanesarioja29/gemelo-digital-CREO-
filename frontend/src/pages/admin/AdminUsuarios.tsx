@@ -3,7 +3,7 @@ import client from '../../api/client';
 import { Users, Edit2, Trash2, Plus, AlertCircle } from 'lucide-react';
 
 interface Piso { id: number; nombre: string; sede: { nombre: string } }
-interface Usuario { id: number; nombreUsuario: string; nombreCompleto: string; rol: string; activo: boolean; pisosAsignados: Piso[] }
+interface Usuario { id: number; nombreUsuario: string; nombreCompleto: string; rol: string; activo: boolean; pisosAsignados: number[] }
 
 export default function AdminUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -91,7 +91,7 @@ export default function AdminUsuarios() {
       rol: roles.find(r => r.label === u.rol)?.value || 1, 
       password: '', 
       activo: u.activo,
-      pisosAsignados: u.pisosAsignados.map(p => p.id)
+      pisosAsignados: u.pisosAsignados
     });
     setIsEditing(true);
   };

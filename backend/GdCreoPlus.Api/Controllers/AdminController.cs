@@ -80,7 +80,7 @@ public class AdminController : ControllerBase
     [HttpGet("pisos")]
     public async Task<IActionResult> GetPisos([FromQuery] int? sedeId)
     {
-        var query = _context.Pisos.AsQueryable();
+        var query = _context.Pisos.Include(p => p.Sede).AsQueryable();
         if (sedeId.HasValue) query = query.Where(p => p.SedeId == sedeId.Value);
         return Ok(await query.ToListAsync());
     }
