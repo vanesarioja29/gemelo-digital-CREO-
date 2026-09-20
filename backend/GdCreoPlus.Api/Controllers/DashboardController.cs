@@ -183,34 +183,65 @@ public class DashboardController : ControllerBase
         var startUtc = hoyLocal.AddHours(5);
         var endUtc = startUtc.AddDays(1);
 
-        var qEventos = _context.EventosDeteccion.Where(e => e.TimestampUtc >= startUtc && e.TimestampUtc < endUtc);
+        var sesiones = await _context.SesionesCircuito
+            .Where(s => s.HoraIngreso < endUtc && (s.HoraSalida == null || s.HoraSalida >= startUtc))
+            .ToListAsync();
 
-        if (zonaId.HasValue)
-            qEventos = qEventos.Where(e => e.ZonaId == zonaId.Value);
-        else if (pisoId.HasValue)
-            qEventos = qEventos.Where(e => e.Zona.PisoId == pisoId.Value);
-        else if (assignedPisos != null)
-            qEventos = qEventos.Where(e => assignedPisos.Contains(e.Zona.PisoId));
+        var tarjetaIds = sesiones.Select(s => s.TarjetaId).Distinct().ToList();
 
-        var eventos = await qEventos.ToListAsync();
+        var eventos = await _context.EventosDeteccion
+            .Include(e => e.Zona)
+            .Where(e => tarjetaIds.Contains(e.TarjetaId) && e.TimestampUtc < endUtc)
+            .ToListAsync();
 
-        var agrupadoporHora = eventos
-            .GroupBy(e => e.TimestampUtc.AddHours(-5).Hour)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.TarjetaId).Distinct().Count());
-
-        int startHour = 7;
-        int endHour = 19;
+        int minLocalHour = 7;
+        int maxLocalHour = 19;
         
-        if (agrupadoporHora.Any())
+        var eventosHoy = eventos.Where(e => e.TimestampUtc >= startUtc).ToList();
+        if (eventosHoy.Any())
         {
-            startHour = Math.Min(startHour, agrupadoporHora.Keys.Min());
-            endHour = Math.Max(endHour, agrupadoporHora.Keys.Max());
+            minLocalHour = Math.Min(minLocalHour, eventosHoy.Min(e => e.TimestampUtc.AddHours(-5).Hour));
+            maxLocalHour = Math.Max(maxLocalHour, eventosHoy.Max(e => e.TimestampUtc.AddHours(-5).Hour));
         }
 
-        var data = Enumerable.Range(startHour, endHour - startHour + 1).Select(h => new {
-            Hora = $"{h:00}:00",
-            Aforo = agrupadoporHora.ContainsKey(h) ? agrupadoporHora[h] : 0
-        });
+        var data = new List<object>();
+        for (int h = minLocalHour; h <= maxLocalHour; h++)
+        {
+            int maxAforo = 0;
+            foreach (int m in new[] { 0, 15, 30, 45 })
+            {
+                var tUtc = startUtc.AddHours(h).AddMinutes(m);
+                int countT = 0;
+
+                foreach (var s in sesiones)
+                {
+                    if (s.HoraIngreso <= tUtc && (s.HoraSalida == null || s.HoraSalida >= tUtc))
+                    {
+                        var lastEvt = eventos
+                            .Where(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc <= tUtc)
+                            .OrderByDescending(e => e.TimestampUtc)
+                            .FirstOrDefault();
+
+                        if (lastEvt != null)
+                        {
+                            bool matches = false;
+                            if (zonaId.HasValue) matches = lastEvt.ZonaId == zonaId.Value;
+                            else if (pisoId.HasValue) matches = lastEvt.Zona.PisoId == pisoId.Value;
+                            else if (assignedPisos != null) matches = assignedPisos.Contains(lastEvt.Zona.PisoId);
+                            else matches = true;
+
+                            if (matches) countT++;
+                        }
+                    }
+                }
+                maxAforo = Math.Max(maxAforo, countT);
+            }
+
+            data.Add(new {
+                Hora = $"{h:00}:00",
+                Aforo = maxAforo
+            });
+        }
 
         return Ok(data);
     }
