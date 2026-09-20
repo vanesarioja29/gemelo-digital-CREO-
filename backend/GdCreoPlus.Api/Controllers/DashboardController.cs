@@ -179,8 +179,11 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!await ValidatePisoAndZonaAsync(pisoId, zonaId, assignedPisos)) return Forbid();
 
-        var hoy = DateTime.UtcNow.Date;
-        var qEventos = _context.EventosDeteccion.Where(e => e.TimestampUtc.Date == hoy);
+        var hoyLocal = DateTime.UtcNow.AddHours(-5).Date;
+        var startUtc = hoyLocal.AddHours(5);
+        var endUtc = startUtc.AddDays(1);
+
+        var qEventos = _context.EventosDeteccion.Where(e => e.TimestampUtc >= startUtc && e.TimestampUtc < endUtc);
 
         if (zonaId.HasValue)
             qEventos = qEventos.Where(e => e.ZonaId == zonaId.Value);
@@ -192,7 +195,7 @@ public class DashboardController : ControllerBase
         var eventos = await qEventos.ToListAsync();
 
         var agrupadoporHora = eventos
-            .GroupBy(e => e.TimestampUtc.Hour)
+            .GroupBy(e => e.TimestampUtc.AddHours(-5).Hour)
             .ToDictionary(g => g.Key, g => g.Select(e => e.TarjetaId).Distinct().Count());
 
         int startHour = 7;

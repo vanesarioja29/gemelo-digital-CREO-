@@ -305,7 +305,7 @@ function PisoDashboardPanel({
                       <div className="flex items-center gap-3">
                         <div className={`w-2 h-10 rounded-full ${act.zonaActualTipo === 'Consultorio' ? 'bg-creo-naranja' : 'bg-gray-500'}`}></div>
                         <div>
-                          <div className="font-semibold text-gray-800 text-sm">Paciente #{act.codigoPacienteAnonimo}</div>
+                          <div className="font-semibold text-gray-800 text-sm">{act.codigoPacienteAnonimo}</div>
                           <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 font-medium"><MapPin size={12} /> {act.zonaActual}</div>
                         </div>
                       </div>
@@ -334,7 +334,7 @@ function PisoDashboardPanel({
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-10 rounded-full bg-creo-verde"></div>
                             <div>
-                              <div className="font-semibold text-gray-800 text-sm">Paciente #{act.codigoPacienteAnonimo}</div>
+                              <div className="font-semibold text-gray-800 text-sm">{act.codigoPacienteAnonimo}</div>
                               <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><CheckCircle size={12} /> Atendido</div>
                             </div>
                           </div>
