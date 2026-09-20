@@ -46,6 +46,14 @@ public class DashboardController : ControllerBase
         return true;
     }
 
+    private (DateTime StartUtc, DateTime EndUtc) GetTodayLocalPeruUtcBounds()
+    {
+        var hoyLocal = DateTime.UtcNow.AddHours(-5).Date;
+        var startUtc = hoyLocal.AddHours(5);
+        var endUtc = startUtc.AddDays(1);
+        return (startUtc, endUtc);
+    }
+
     [HttpGet("kpis")]
     public async Task<IActionResult> GetKpis([FromQuery] int? pisoId, [FromQuery] int? zonaId)
     {
@@ -69,12 +77,12 @@ public class DashboardController : ControllerBase
 
         var aforoActual = await qEnCircuito.CountAsync();
         
-        var hoy = DateTime.UtcNow.Date;
+        var bounds = GetTodayLocalPeruUtcBounds();
         
-        var atendidos = await _context.SesionesCircuito.CountAsync(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy);
+        var atendidos = await _context.SesionesCircuito.CountAsync(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value >= bounds.StartUtc && s.HoraSalida.Value < bounds.EndUtc);
         
         var qSesionesHoy = _context.SesionesCircuito
-            .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value.Date == hoy);
+            .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value >= bounds.StartUtc && s.HoraSalida.Value < bounds.EndUtc);
 
         if (zonaId.HasValue) {
             qSesionesHoy = qSesionesHoy.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && e.ZonaId == zonaId));
@@ -147,20 +155,18 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!await ValidatePisoAndZonaAsync(pisoId, zonaId, assignedPisos)) return Forbid();
 
-        var query = _context.SesionesCircuito
+        var qActivos = _context.SesionesCircuito
             .Include(s => s.ZonaActual)
-            .Where(s => s.ZonaActual != null && s.ZonaActual.EnSeguimiento)
-            .OrderByDescending(s => s.HoraIngreso)
-            .AsQueryable();
+            .Where(s => s.Estado == EstadoSesion.EnCircuito && s.ZonaActual != null && s.ZonaActual.EnSeguimiento);
 
         if (zonaId.HasValue) 
-            query = query.Where(s => s.ZonaActualId == zonaId.Value);
+            qActivos = qActivos.Where(s => s.ZonaActualId == zonaId.Value);
         else if (pisoId.HasValue)
-            query = query.Where(s => s.ZonaActual != null && s.ZonaActual.PisoId == pisoId.Value);
+            qActivos = qActivos.Where(s => s.ZonaActual != null && s.ZonaActual.PisoId == pisoId.Value);
         else if (assignedPisos != null)
-            query = query.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
+            qActivos = qActivos.Where(s => s.ZonaActual != null && assignedPisos.Contains(s.ZonaActual.PisoId));
 
-        var result = await query.Take(limit).Select(s => new {
+        var activos = await qActivos.OrderByDescending(s => s.HoraIngreso).Select(s => new {
             s.Id,
             s.CodigoPacienteAnonimo,
             Estado = s.Estado.ToString(),
@@ -169,6 +175,36 @@ public class DashboardController : ControllerBase
             s.HoraIngreso,
             s.HoraSalida
         }).ToListAsync();
+
+        var bounds = GetTodayLocalPeruUtcBounds();
+        var qAtendidos = _context.SesionesCircuito
+            .Where(s => s.Estado == EstadoSesion.Atendido && s.HoraSalida != null && s.HoraSalida.Value >= bounds.StartUtc && s.HoraSalida.Value < bounds.EndUtc);
+
+        if (zonaId.HasValue) {
+            qAtendidos = qAtendidos.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && e.ZonaId == zonaId));
+        }
+        else if (pisoId.HasValue) {
+            qAtendidos = qAtendidos.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && e.Zona.PisoId == pisoId));
+        }
+        else if (assignedPisos != null) {
+            qAtendidos = qAtendidos.Where(s => _context.EventosDeteccion.Any(e => e.TarjetaId == s.TarjetaId && e.TimestampUtc >= s.HoraIngreso && assignedPisos.Contains(e.Zona.PisoId)));
+        }
+
+        var atendidos = await qAtendidos
+            .OrderByDescending(s => s.HoraSalida)
+            .Take(limit)
+            .Select(s => new {
+                s.Id,
+                s.CodigoPacienteAnonimo,
+                Estado = s.Estado.ToString(),
+                ZonaActual = "Ninguna",
+                ZonaActualTipo = (string)null,
+                s.HoraIngreso,
+                s.HoraSalida
+            })
+            .ToListAsync();
+
+        var result = activos.Concat(atendidos).ToList();
 
         return Ok(result);
     }
@@ -179,9 +215,9 @@ public class DashboardController : ControllerBase
         var assignedPisos = GetAssignedPisos();
         if (!await ValidatePisoAndZonaAsync(pisoId, zonaId, assignedPisos)) return Forbid();
 
-        var hoyLocal = DateTime.UtcNow.AddHours(-5).Date;
-        var startUtc = hoyLocal.AddHours(5);
-        var endUtc = startUtc.AddDays(1);
+        var bounds = GetTodayLocalPeruUtcBounds();
+        var startUtc = bounds.StartUtc;
+        var endUtc = bounds.EndUtc;
 
         var sesiones = await _context.SesionesCircuito
             .Where(s => s.HoraIngreso < endUtc && (s.HoraSalida == null || s.HoraSalida >= startUtc))

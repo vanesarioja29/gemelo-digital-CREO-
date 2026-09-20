@@ -253,7 +253,7 @@ function PisoDashboardPanel({
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-white text-gray-800 rounded-lg shadow-xl border border-gray-100 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
                       <div className="font-bold text-sm mb-1">{z.nombre}</div>
                       <div className="text-xs text-gray-500 mb-1">Aforo actual: <span className="font-bold text-gray-800">{z.ocupacion} pacientes</span></div>
-                      <div className="text-xs text-gray-500 mb-2">Aforo máximo: {z.maxAforo} pacientes</div>
+                      <div className="text-xs text-gray-500 mb-2">Aforo máximo: {z.aforoMaximo} pacientes</div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
                         <div className={`w-2.5 h-2.5 rounded ${bgClass}`}></div>
                         Estado: {label}
